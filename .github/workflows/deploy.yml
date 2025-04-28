@@ -52,8 +52,8 @@ jobs:
       
       - name: Update docker-compose.prod.yml with correct image
         run: |
-          sed -i "s|your-image-name:latest|${{ secrets.DOCKER_REPO }}/${{ env.image-name }}|g" docker-compose.prod.yml
-      
+          sed -i "s|image: .*|image: ${{ secrets.DOCKER_REPO }}/${{ env.image-name }}|g" docker-compose.prod.yml
+
       - name: Commit updated docker-compose.prod.yml to the tag
         run: |
           git config user.name "GitHub Actions"
