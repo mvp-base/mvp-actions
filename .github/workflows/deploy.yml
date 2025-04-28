@@ -8,26 +8,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Compute variables
-        id: set-vars
-        env:
-          ENV_VARS: ${{ secrets.ENV_VARS }}
+      - name: Checkout project code
+        uses: actions/checkout@v4
+      
+      - name: Prepare variables and build args
+        id: prep
         run: |
-          echo "DEBUG: ENV_VARS=$ENV_VARS"
-
           BUILD_ARGS=""
           ENV_FLAGS=""
-
-          while IFS= read -r VAR; do
-            if [[ "$VAR" =~ ^NEXT_PUBLIC_ ]]; then
-              BUILD_ARGS="$BUILD_ARGS --build-arg $VAR"
-            else
-              ENV_FLAGS="$ENV_FLAGS -e $VAR"
+          
+          for VAR in $(env); do 
+            if [[ "$VAR" =~ ^ARG_ ]]; then 
+              BUILD_ARGS="$BUILD_ARGS --build-arg ${VAR}=${!VAR}"
             fi
-          done <<< "$ENV_VARS"
 
-          echo "DEBUG: BUILD_ARGS=$BUILD_ARGS"
-          echo "DEBUG: ENV_FLAGS=$ENV_FLAGS"
+            if [[ "$VAR" =~ ^ENV_ ]];then 
+              ENV_FLAGS="$ENV_FLAGS export ${VAR}=${!VAR};"   
+            fi
+          done
 
           REF="${{ github.ref }}"
           TAG_NAME="${REF##*/}"
@@ -35,14 +33,11 @@ jobs:
           CONTAINER_NAME=$(echo "$REPO_NAME" | tr '[:upper:]' '[:lower:]')
           IMAGE_NAME="${CONTAINER_NAME}:${TAG_NAME}"
 
-          echo "DEBUG: IMAGE_NAME=$IMAGE_NAME"
           echo "image-name=${IMAGE_NAME}" >> $GITHUB_ENV
           echo "container-name=${CONTAINER_NAME}" >> $GITHUB_ENV
           echo "build-args=${BUILD_ARGS}" >> $GITHUB_ENV
           echo "env-flags=${ENV_FLAGS}" >> $GITHUB_ENV
 
-      - name: Checkout project code
-        uses: actions/checkout@v4
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
@@ -52,9 +47,29 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          # Build Docker image and dynamically inject all NEXT_PUBLIC_* variables as build arguments
-          docker build ${{ env.build-args }} -t "${{ secrets.DOCKER_REPO }}/${{ env.image-name }}" .
+          docker build -f Dockerfile.prod ${{ env.build-args }} -t "${{ secrets.DOCKER_REPO }}/${{ env.image-name }}" .
           docker push "${{ secrets.DOCKER_REPO }}/${{ env.image-name }}"
+      
+      - name: Update docker-compose.prod.yml with correct image
+        run: |
+          sed -i "s|your-image-name:latest|${{ secrets.DOCKER_REPO }}/${{ env.image-name }}|g" docker-compose.prod.yml
+      
+      - name: Commit updated docker-compose.prod.yml to the tag
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          
+          git fetch origin ${{ github.ref }}
+          git checkout ${{ github.ref }}
+          
+          git add docker-compose.prod.yml
+          git commit -m "Update docker-compose.prod.yml with image: ${{ env.image-name }}"
+          
+          git push origin HEAD:${{ github.ref }}
+
+      - name: Copy docker-compose.yml to target server
+        run: |
+          scp -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no ./docker-compose.prod.yml ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/tmp/docker-compose-${{ env.image-name }}.yml
 
       - name: Deploy to production
         uses: appleboy/ssh-action@v0.1.5
@@ -64,25 +79,18 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
-            echo "Pulling image"
-            docker pull "${{ secrets.DOCKER_REPO }}/${{ env.image-name }}"
-
-            echo "Checking if container ${{ env.container-name }} exists..."
-            if [ "$(docker ps -aq -f name=^${{ env.container-name }}$)" ]; then
-              echo "Stopping and removing existing container..."
-              docker stop "${{ env.container-name }}"
-              docker rm "${{ env.container-name }}"
-            else
-              echo "No existing container found."
+            if [ ! -d "/srv/mvp-infra/${{ env.container-name }}" ]; then
+              mkdir -p /srv/mvp-infra/${{ env.container-name }}
             fi
+            
+            mv /tmp/docker-compose-${{ env.image-name }}.yml /srv/mvp-infra/${{ env.container-name }}/docker-compose.yml
 
-            echo "Running new container..."
-            docker run -d \
-              --restart unless-stopped \
-              -p "${{ secrets.EXPOSED_PORT }}:${{ secrets.INTERNAL_PORT }}" \
-              --name "${{ env.container-name }}" \
-              ${{ env.env-flags }} \
-              "${{ secrets.DOCKER_REPO }}/${{ env.image-name }}"
+            cd /srv/mvp-infra/${{ env.container-name }}
+            
+            eval "${{ env.env-flags }}"
+            export IMAGE_NAME="${{ env.image-name }}"
+            
+            docker compose up -d --remove-orphans --pull always          
 
             echo "Deployment complete."
 
