@@ -10,20 +10,24 @@ jobs:
     steps:
       - name: Checkout project code
         uses: actions/checkout@v4
-      
+
       - name: Prepare variables and build args
         id: prep
         run: |
+          set -euo pipefail
+
           BUILD_ARGS=""
           ENV_FLAGS=""
-          
+
           for VAR in $(env); do 
             if [[ "$VAR" =~ ^ARG_ ]]; then 
-              BUILD_ARGS="$BUILD_ARGS --build-arg ${VAR}=${!VAR}"
+              NAME=${VAR#ARG_}
+              BUILD_ARGS="$BUILD_ARGS --build-arg ${NAME}=${!VAR}"
             fi
 
-            if [[ "$VAR" =~ ^ENV_ ]];then 
-              ENV_FLAGS="$ENV_FLAGS export ${VAR}=${!VAR};"   
+            if [[ "$VAR" =~ ^ENV_ ]]; then 
+              NAME=${VAR#ENV_}
+              ENV_FLAGS="$ENV_FLAGS export ${NAME}='${!VAR}';"   
             fi
           done
 
@@ -38,7 +42,6 @@ jobs:
           echo "build-args=${BUILD_ARGS}" >> $GITHUB_ENV
           echo "env-flags=${ENV_FLAGS}" >> $GITHUB_ENV
 
-
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
@@ -47,29 +50,19 @@ jobs:
 
       - name: Build and push Docker image
         run: |
+          set -euo pipefail
           docker build -f Dockerfile.prod ${{ env.build-args }} -t "${{ secrets.DOCKER_REPO }}/${{ env.image-name }}" .
           docker push "${{ secrets.DOCKER_REPO }}/${{ env.image-name }}"
-      
-      - name: Update docker-compose.prod.yml with correct image
-        run: |
-          sed -i "s|image: .*|image: ${{ secrets.DOCKER_REPO }}/${{ env.image-name }}|g" docker-compose.prod.yml
 
-      - name: Commit updated docker-compose.prod.yml to the tag
+      - name: Update docker-compose.yml on target server
         run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          
-          git fetch origin ${{ github.ref }}
-          git checkout ${{ github.ref }}
-          
-          git add docker-compose.prod.yml
-          git commit -m "Update docker-compose.prod.yml with image: ${{ env.image-name }}"
-          
-          git push origin HEAD:${{ github.ref }}
+          set -euo pipefail
+          ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
+            "mkdir -p /srv/mvp-base/prod/${{ env.container-name }}"
 
-      - name: Copy docker-compose.yml to target server
-        run: |
-          scp -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no ./docker-compose.prod.yml ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/tmp/docker-compose-${{ env.image-name }}.yml
+          scp -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+            ./docker-compose.prod.yml \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/srv/mvp-infra/${{ env.container-name }}/docker-compose.yml
 
       - name: Deploy to production
         uses: appleboy/ssh-action@v0.1.5
@@ -79,18 +72,13 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
-            if [ ! -d "/srv/mvp-infra/${{ env.container-name }}" ]; then
-              mkdir -p /srv/mvp-infra/${{ env.container-name }}
-            fi
-            
-            mv /tmp/docker-compose-${{ env.image-name }}.yml /srv/mvp-infra/${{ env.container-name }}/docker-compose.yml
+            set -euo pipefail
 
-            cd /srv/mvp-infra/${{ env.container-name }}
-            
+            cd /srv/mvp/${{ env.container-name }}
+
+            export IMAGE_NAME="${{ secrets.DOCKER_REPO }}/${{ env.image-name }}"
             eval "${{ env.env-flags }}"
-            export IMAGE_NAME="${{ env.image-name }}"
-            
-            docker compose up -d --remove-orphans --pull always          
 
-            echo "Deployment complete."
+            docker compose up -d --pull always --remove-orphans
 
+            echo "✅ Deployment complete."
