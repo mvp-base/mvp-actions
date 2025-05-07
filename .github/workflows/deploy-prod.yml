@@ -38,7 +38,7 @@ jobs:
           IMAGE_NAME="${CONTAINER_NAME}:${TAG_NAME}"
           RELEASE_DIR="${{ secrets.BASE_DEPLOY_PATH }}${CONTAINER_NAME}/${TAG_NAME}"
 
-          ENV_FILE="$ENV_FILETAG_NAME${TAG_NAME}\n"
+          ENV_FILE="${ENV_FILE}IMAGE_TAG=${TAG_NAME}\n"
 
           echo -e "$ENV_FILE" > .env.gen
 
