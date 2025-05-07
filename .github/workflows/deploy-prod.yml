@@ -68,6 +68,13 @@ jobs:
           script: |
             mkdir -p "${{ env.release-dir }}"
 
+      - name: Debug file presence
+        run: |
+          echo "Listing workspace:"
+          ls -lah
+          echo "Checking files:"
+          ls -l ./docker-compose.prod.yml ./.env.gen
+
       - name: Upload docker-compose and env
         uses: appleboy/scp-action@v0.1.4
         with:
