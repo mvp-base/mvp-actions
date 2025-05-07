@@ -36,16 +36,17 @@ jobs:
           REPO_NAME="${{ github.event.repository.name }}"
           CONTAINER_NAME=$(echo "$REPO_NAME" | tr '[:upper:]' '[:lower:]')
           IMAGE_NAME="${CONTAINER_NAME}:${TAG_NAME}"
-          RELEASE_DIR="${{ secrets.BASE_DEPLOY_PATH }}${CONTAINER_NAME}/${TAG_NAME}"
+          APP_DIR="${{ secrets.BASE_DEPLOY_PATH }}${CONTAINER_NAME}"
 
           ENV_FILE="${ENV_FILE}IMAGE_TAG=${TAG_NAME}\n"
 
           echo -e "$ENV_FILE" > .env.gen
 
+          echo "tag-name=${TAG_NAME}" >> $GITHUB_ENV
           echo "image-name=${IMAGE_NAME}" >> $GITHUB_ENV
           echo "container-name=${CONTAINER_NAME}" >> $GITHUB_ENV
           echo "build-args=${BUILD_ARGS}" >> $GITHUB_ENV
-          echo "release-dir=${RELEASE_DIR}" >> $GITHUB_ENV
+          echo "app-dir=${APP_DIR}" >> $GITHUB_ENV
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
@@ -68,12 +69,11 @@ jobs:
           script: |
             mkdir -p "${{ env.release-dir }}"
 
-      - name: Debug file presence
+      - name: Prepare deploy artifacts
         run: |
-          echo "Listing workspace:"
-          ls -lah
-          echo "Checking files:"
-          ls -l ./docker-compose.prod.yml ./.env.gen
+          mkdir -p ${{ env.tag-name }}
+          cp docker-compose.prod.yml ${{ env.tag-name }}/docker-compose.yml
+          cp .env.gen ${{ env.tag-name }}/.env
 
       - name: Upload docker-compose and env
         uses: appleboy/scp-action@v0.1.4
@@ -81,9 +81,7 @@ jobs:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: |
-            ./docker-compose.prod.yml
-            ./.env.gen
+          source: ./${{ env.tag-name }}
           target: "${{ env.release-dir }}"
           strip_components: 0
 
@@ -97,10 +95,8 @@ jobs:
           script: |
             set -euo pipefail
 
-            cd "${{ env.release-dir }}"
+            cd "${{ env.release-dir }}/${{ env.tag-name }}"
 
-            mv .env.gen .env 
-            mv docker-compose.prod.yml docker-compose.yml 
             chmod 600 .env 
             chmod 644 docker-compose.yml
 
