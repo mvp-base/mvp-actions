@@ -59,20 +59,26 @@ jobs:
           docker build -f Dockerfile.prod ${{ env.build-args }} -t "${{ secrets.DOCKER_REPO }}/${{ env.image-name }}" .
           docker push "${{ secrets.DOCKER_REPO }}/${{ env.image-name }}"
 
-      - name: Upload docker-compose file to server
+      - name: Create target directory on server
+        uses: appleboy/ssh-action@v0.1.5
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            mkdir -p "${{ env.release-dir }}"
+
+      - name: Upload docker-compose and env
         uses: appleboy/scp-action@v0.1.4
         with:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
           source: |
             ./docker-compose.prod.yml
-            ./env.gen
+            ./.env.gen
           target: "${{ env.release-dir }}"
           strip_components: 0
-          pre-script: |
-            mkdir -p "${{ env.release-dir }}"
 
       - name: Deploy to production
         uses: appleboy/ssh-action@v0.1.5
