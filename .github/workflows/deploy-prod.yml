@@ -67,7 +67,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            mkdir -p "${{ env.release-dir }}"
+            mkdir -p "${{ env.app-dir }}"
 
       - name: Prepare deploy artifacts
         run: |
@@ -82,7 +82,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: ./${{ env.tag-name }}
-          target: "${{ env.release-dir }}"
+          target: "${{ env.app-dir }}"
           strip_components: 0
 
       - name: Deploy to production
@@ -95,7 +95,7 @@ jobs:
           script: |
             set -euo pipefail
 
-            cd "${{ env.release-dir }}/${{ env.tag-name }}"
+            cd "${{ env.app-dir }}/${{ env.tag-name }}"
 
             chmod 600 .env 
             chmod 644 docker-compose.yml
