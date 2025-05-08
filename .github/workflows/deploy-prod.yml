@@ -73,21 +73,19 @@ jobs:
           cp docker-compose.prod.yml ${{ env.tag-name }}/docker-compose.yml
           cp .env.final ${{ env.tag-name }}/.env
 
-      - name: Check target directory on server
+      - name: Stop previous version (if running)
         uses: appleboy/ssh-action@v0.1.5
         with:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            APP_DIR="${{ env.app-dir }}"
-            TAG_DIR="${APP_DIR}/${{ env.tag-name }}"
-            
-            if [ -d "$TAG_DIR" ]; then 
-              rm -rf "$TAG_DIR"
-            fi 
+            TAG_DIR="${{ env.app-dir }}/${{ env.tag-name }}"
 
-            mkdir -p "$APP_DIR"
+            if [ -f "$TAG_DIR/docker-compose.yml" ]; then
+              cd "$TAG_DIR"
+              docker compose down --remove-orphans
+            fi
 
       - name: Upload docker-compose and env
         uses: appleboy/scp-action@v0.1.4
@@ -108,12 +106,17 @@ jobs:
           port: 22
           script: |
             set -euo pipefail
-            
+           
+            APP_DIR="${{ env.app-dir }}"
+            TAG_DIR="${APP_DIR}/${{ env.tag-name }}"
+
+            mkdir -p "$APP_DIR"
+            rm -rf "$TAG_DIR"
+
             cd "${{ env.app-dir }}/${{ env.tag-name }}"
             chmod 600 .env 
             chmod 644 docker-compose.yml
 
-            docker compose down --remove-orphans
             docker compose up -d --pull always --remove-orphans
 
             echo "Deployment complete."
