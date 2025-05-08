@@ -64,7 +64,7 @@ jobs:
       - name: Build and push Docker image
         run: |
           set -euo pipefail
-          docker build -f Dockerfile.prod ${{ env.build-args }} -t "${{ secrets.DOCKER_REPO }}/${{ env.image-name }}" .
+          eval docker build -f Dockerfile.prod ${{ env.build-args }} -t "${{ secrets.DOCKER_REPO }}/${{ env.image-name }}" .
           docker push "${{ secrets.DOCKER_REPO }}/${{ env.image-name }}"
 
       - name: Prepare deploy artifacts
