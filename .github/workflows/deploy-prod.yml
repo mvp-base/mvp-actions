@@ -38,13 +38,11 @@ jobs:
             [[ -z "$line" || "$line" == \#* ]] && continue
             if [[ "$line" == NEXT_PUBLIC_* ]]; then
               NAME=$(cut -d= -f1 <<< "$line")
-              VALUE=$(cut -d= -f2- <<< "$line")
+              VALUE=$(cut -d= -f2- <<< "$line" | sed "s/^['\"]//;s/['\"]$//")
               echo "Adding build arg: $NAME=$VALUE"
               BUILD_ARGS="$BUILD_ARGS --build-arg ${NAME}=${VALUE}"
             fi
           done < "$RAW_ENV"
-
-
 
           REF="${{ github.ref }}" 
           TAG_NAME="${REF##*/}"
