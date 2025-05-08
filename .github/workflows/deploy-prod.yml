@@ -35,12 +35,15 @@ jobs:
           BUILD_ARGS=""
           ENV_FILE=""
 
-          while IFS='=' read -r key value; do
-            # Remove surrounding quotes
-            value="${value%\"}"
-            value="${value#\"}"
-            value="${value%\'}"
-            value="${value#\'}"
+          while IFS= read -r line; do
+            [[ -z "$line" || "$line" == \#* ]] && continue # Skip empty lines and comments
+
+            key="${line%%=*}"
+            value="${line#*=}"
+
+            # Strip quotes around the value
+            value="${value%\"}"; value="${value#\"}"
+            value="${value%\'}"; value="${value#\'}"
 
             if [[ "$key" == NEXT_PUBLIC_* ]]; then
               BUILD_ARGS="$BUILD_ARGS --build-arg ${key}=${value}"
@@ -65,6 +68,14 @@ jobs:
           echo "container-name=${CONTAINER_NAME}" >> $GITHUB_ENV
           echo "build-args=${BUILD_ARGS}" >> $GITHUB_ENV
           echo "app-dir=${APP_DIR}" >> $GITHUB_ENV
+
+      - name: 🔍 Show contents of final env file
+        run: |
+          echo "--- .env file ---"
+          cat /home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}.env || echo "Not found"
+          
+          echo "--- .env.final file ---"
+          cat .env.final || echo "Not found"
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
