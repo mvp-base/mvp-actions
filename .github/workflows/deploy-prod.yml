@@ -20,8 +20,7 @@ jobs:
           env-slug: "prod"
           project-slug: ${{ github.event.repository.name }}
           export-type: "file"
-          file-output-path: ".env.infisical"
-
+          file-output-path: "${{ github.workspace }}/.env.infisical"
       - name: Debug check .env.infisical
         run: |
           ls -la
