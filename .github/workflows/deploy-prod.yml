@@ -36,12 +36,11 @@ jobs:
           ENV_FILE=""
 
           while IFS= read -r line; do
-            [[ -z "$line" || "$line" == \#* ]] && continue # Skip empty lines and comments
-
+            [[ -z "$line" || "$line" == \#* ]] && continue # Skip blank lines/comments
             key="${line%%=*}"
             value="${line#*=}"
 
-            # Strip quotes around the value
+            # Strip quotes
             value="${value%\"}"; value="${value#\"}"
             value="${value%\'}"; value="${value#\'}"
 
@@ -50,8 +49,8 @@ jobs:
             else 
               ENV_FILE="${ENV_FILE}${key}=${value}\n"
             fi
-          done < "/home/runner/work/mvp-api-gateway/mvp-api-gateway.env"
-          
+          done < "/home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}.env"
+
           REF="${{ github.ref }}" 
           TAG_NAME="${REF##*/}"
           REPO_NAME="${{ github.event.repository.name }}"
