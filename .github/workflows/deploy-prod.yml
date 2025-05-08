@@ -70,8 +70,8 @@ jobs:
       - name: Prepare deploy artifacts
         run: |
           mkdir -p deploy
-          cp docker-compose.prod.yml deploy/docker-compose.yml
-          cp .env.final deploy/.env
+          cp docker-compose.prod.yml ${{ env.container-name }}/docker-compose.yml
+          cp .env.final ${{ env.container-name }}/.env
 
       - name: Check app dir and Stop previous version (if running)
         uses: appleboy/ssh-action@v0.1.5
@@ -96,7 +96,7 @@ jobs:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "./deploy/*"
+          source: "${{ env.container-name }}"
           target: "${{ env.app-dir }}"
           strip_components: 0
 
