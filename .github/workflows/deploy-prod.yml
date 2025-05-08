@@ -20,7 +20,12 @@ jobs:
           env-slug: "prod"
           project-slug: ${{ github.event.repository.name }}
           export-type: "file"
-          file-output-path: "${{ github.event.repository.name }}.env"
+          file-output-path: ".env"
+
+      - name: Debug check .env.infisical
+        run: |
+          ls -la
+          cat /home/runner/work/mvp-api-gateway/mvp-api-gateway.env
 
       - name: Parse arguments and variables
         id: prep
@@ -40,7 +45,8 @@ jobs:
             else
               ENV_FILE="${ENV_FILE}${line}\n"
             fi
-          done < "${{ github.event.repository.name }}.env"
+          done < "/home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}.env"
+
 
           REF="${{ github.ref }}" 
           TAG_NAME="${REF##*/}"
