@@ -98,7 +98,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: ./deploy
           target: "${{ env.app-dir }}"
-          strip_components: 0
+          strip_components: 1
 
       - name: Deploy to production
         uses: appleboy/ssh-action@v0.1.5
