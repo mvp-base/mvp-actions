@@ -35,15 +35,19 @@ jobs:
           BUILD_ARGS=""
           ENV_FILE=""
 
-          while IFS='=' read -r line; do
-            key="${line%%=*}"
-            value="${line#*=}"
+          while IFS='=' read -r key value; do
+            # Remove surrounding quotes
+            value="${value%\"}"
+            value="${value#\"}"
+            value="${value%\'}"
+            value="${value#\'}"
+
             if [[ "$key" == NEXT_PUBLIC_* ]]; then
               BUILD_ARGS="$BUILD_ARGS --build-arg ${key}=${value}"
             else 
               ENV_FILE="${ENV_FILE}${key}=${value}\n"
             fi
-          done < "/home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}.env"
+          done < "/home/runner/work/mvp-api-gateway/mvp-api-gateway.env"
           
           REF="${{ github.ref }}" 
           TAG_NAME="${REF##*/}"
