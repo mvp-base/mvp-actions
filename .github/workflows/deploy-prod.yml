@@ -22,11 +22,6 @@ jobs:
           export-type: "file"
           file-output-path: ".env"
 
-      - name: Debug check .env.infisical
-        run: |
-          ls -la
-          cat /home/runner/work/mvp-api-gateway/mvp-api-gateway.env
-
       - name: Parse arguments and variables
         id: prep
         run: |
@@ -45,7 +40,7 @@ jobs:
             else
               ENV_FILE="${ENV_FILE}${line}\n"
             fi
-          done < "/home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}.env"
+          done < ".env" 
 
           REF="${{ github.ref }}" 
           TAG_NAME="${REF##*/}"
@@ -53,6 +48,8 @@ jobs:
           CONTAINER_NAME=$(echo "$REPO_NAME" | tr '[:upper:]' '[:lower:]')
           IMAGE_NAME="${CONTAINER_NAME}:${TAG_NAME}"
           APP_DIR="${{ secrets.BASE_DEPLOY_PATH }}${CONTAINER_NAME}"
+
+          ENV_FILE="${ENV_FILE}TAG_NAME=${TAG_NAME}\n"
 
           echo -e "$ENV_FILE" > .env.final
 
