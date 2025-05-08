@@ -13,7 +13,7 @@ jobs:
       
       - name: Fetch project secrets 
         run: |
-          curl -Lo infisical https://github.com/infisical/infisical/releases/latest/download/infisical-linux-amd64
+          curl -L --fail -o infisical https://github.com/infisical/infisical/releases/latest/download/infisical-linux-amd64
           chmod +x infisical
           INFISICAL_SITE_URL="${{ secrets.INFISICAL_URL }}" ./infisical export \
             --token="${{ secrets.INFISICAL_TOKEN }}" \
