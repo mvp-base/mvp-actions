@@ -10,14 +10,17 @@ jobs:
     steps:
       - name: Checkout project code
         uses: actions/checkout@v4
-
-      - name: Inject secrets from Infisical
-        uses: infisical/github-action@v1
+    
+      - uses: Infisical/secrets-action@v1.0.9
         with:
-          token: ${{ secrets.INFISICAL_TOKEN }}
-          site-url: ${{ secrets.INFISICAL_URL }}
-          environment: prod
-          path: .env.infisical
+          method: "universal"
+          client-id: ${{ secrets.INFISICAL_IDENTITY_ID }}
+          client-secret: ${{ secrets.INFISICAL_IDENTITY_SECRET }}
+          domain: ${{ secrets.INFISICAL_URL }}
+          env-slug: "prod"
+          project-slug: ${{ github.event.repository.name }}
+          export-type: "file"
+          file-output-path: ".env.infisical"
 
       - name: Parse arguments and variables
         id: prep
