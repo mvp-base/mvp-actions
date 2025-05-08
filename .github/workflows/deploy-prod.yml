@@ -10,8 +10,16 @@ jobs:
     steps:
       - name: Checkout project code
         uses: actions/checkout@v4
+      
+      - name: Fetch project secrets 
+        run: |
+          curl -sSf ${{ secrets.INFISICAL_URL }}/download/cli | sh 
+          ./infisical export \
+            --token="${{ secrets.INFISICAL_TOKEN }}" \
+            --env=prod \
+            > .env.infisical
 
-      - name: Prepare variables and build args
+      - name: Parse arguments and variables
         id: prep
         run: |
           set -euo pipefail
@@ -19,19 +27,15 @@ jobs:
           BUILD_ARGS=""
           ENV_FILE=""
 
-          for VAR in $(env); do 
-            if [[ "$VAR" =~ ^ARG_ ]]; then 
-              NAME=${VAR#ARG_}
-              BUILD_ARGS="$BUILD_ARGS --build-arg ${NAME}=${!VAR}"
-            fi
-
-            if [[ "$VAR" =~ ^ENV_ ]]; then 
-              NAME=${VAR#ENV_}
-              ENV_FILE="$ENV_FILE${NAME}=${!VAR}\n" 
-            fi
-          done
-
-          REF="${{ github.ref }}"
+          while IFS='=' read -r key value; do 
+            if [[ "$key" == NEXT_PUBLIC_* ]]; then
+              BUILD_ARGS="$BUILD_ARGS --build-arg ${key}=${value}"
+            else 
+              ENV_FILE="${ENV_FILE}${key}=${value}\n"
+            fi  
+          done < .env.infisical
+          
+          REF="${{ github.ref }}" 
           TAG_NAME="${REF##*/}"
           REPO_NAME="${{ github.event.repository.name }}"
           CONTAINER_NAME=$(echo "$REPO_NAME" | tr '[:upper:]' '[:lower:]')
@@ -40,7 +44,7 @@ jobs:
 
           ENV_FILE="${ENV_FILE}TAG_NAME=${TAG_NAME}\n"
 
-          echo -e "$ENV_FILE" > .env.gen
+          echo -e "$ENV_FILE" > .env.final
 
           echo "tag-name=${TAG_NAME}" >> $GITHUB_ENV
           echo "image-name=${IMAGE_NAME}" >> $GITHUB_ENV
@@ -60,6 +64,12 @@ jobs:
           docker build -f Dockerfile.prod ${{ env.build-args }} -t "${{ secrets.DOCKER_REPO }}/${{ env.image-name }}" .
           docker push "${{ secrets.DOCKER_REPO }}/${{ env.image-name }}"
 
+      - name: Prepare deploy artifacts
+        run: |
+          mkdir -p ${{ env.tag-name }}
+          cp docker-compose.prod.yml ${{ env.tag-name }}/docker-compose.yml
+          cp .env.final ${{ env.tag-name }}/.env
+
       - name: Create target directory on server
         uses: appleboy/ssh-action@v0.1.5
         with:
@@ -68,12 +78,6 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             mkdir -p "${{ env.app-dir }}"
-
-      - name: Prepare deploy artifacts
-        run: |
-          mkdir -p ${{ env.tag-name }}
-          cp docker-compose.prod.yml ${{ env.tag-name }}/docker-compose.yml
-          cp .env.gen ${{ env.tag-name }}/.env
 
       - name: Upload docker-compose and env
         uses: appleboy/scp-action@v0.1.4
@@ -96,10 +100,8 @@ jobs:
             set -euo pipefail
 
             cd "${{ env.app-dir }}/${{ env.tag-name }}"
-
             chmod 600 .env 
             chmod 644 docker-compose.yml
-
             docker compose up -d --pull always --remove-orphans
 
             echo "Deployment complete."
