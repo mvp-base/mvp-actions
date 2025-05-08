@@ -69,7 +69,7 @@ jobs:
 
       - name: Prepare deploy artifacts
         run: |
-          mkdir -p deploy
+          mkdir -p ${{ env.container-name }}
           cp docker-compose.prod.yml ${{ env.container-name }}/docker-compose.yml
           cp .env.final ${{ env.container-name }}/.env
 
