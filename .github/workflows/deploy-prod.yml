@@ -22,11 +22,6 @@ jobs:
           export-type: "file"
           file-output-path: ".env"
 
-      - name: Debug check .env.infisical
-        run: |
-          ls -la
-          cat /home/runner/work/mvp-api-gateway/mvp-api-gateway.env
-
       - name: Parse arguments and variables
         id: prep
         run: |
@@ -59,14 +54,6 @@ jobs:
           echo "container-name=${CONTAINER_NAME}" >> $GITHUB_ENV
           echo "build-args=${BUILD_ARGS}" >> $GITHUB_ENV
           echo "app-dir=${APP_DIR}" >> $GITHUB_ENV
-
-      - name: 🔍 Show contents of final env file
-        run: |
-          echo "--- .env file ---"
-          cat /home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}.env || echo "Not found"
-          
-          echo "--- .env.final file ---"
-          cat .env.final || echo "Not found"
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
@@ -125,6 +112,8 @@ jobs:
             cd "${{ env.app-dir }}/${{ env.tag-name }}"
             chmod 600 .env 
             chmod 644 docker-compose.yml
+
+            docker compose down --remove-orphans
             docker compose up -d --pull always --remove-orphans
 
             echo "Deployment complete."
