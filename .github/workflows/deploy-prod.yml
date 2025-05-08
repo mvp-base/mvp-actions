@@ -15,7 +15,6 @@ jobs:
         run: |
           curl -Lo infisical https://github.com/infisical/infisical/releases/latest/download/infisical-linux-amd64
           chmod +x infisical
-          bash infisical-install.sh
           INFISICAL_SITE_URL="${{ secrets.INFISICAL_URL }}" ./infisical export \
             --token="${{ secrets.INFISICAL_TOKEN }}" \
             --env=prod \
