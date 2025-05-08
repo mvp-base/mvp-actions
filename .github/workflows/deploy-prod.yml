@@ -10,15 +10,14 @@ jobs:
     steps:
       - name: Checkout project code
         uses: actions/checkout@v4
-      
-      - name: Fetch project secrets 
-        run: |
-          curl -L --fail -o infisical https://github.com/infisical/infisical/releases/latest/download/infisical-linux-amd64
-          chmod +x infisical
-          INFISICAL_SITE_URL="${{ secrets.INFISICAL_URL }}" ./infisical export \
-            --token="${{ secrets.INFISICAL_TOKEN }}" \
-            --env=prod \
-            > .env.infisical
+
+      - name: Inject secrets from Infisical
+        uses: infisical/github-action@v1
+        with:
+          token: ${{ secrets.INFISICAL_TOKEN }}
+          site-url: ${{ secrets.INFISICAL_URL }}
+          environment: prod
+          path: .env.infisical
 
       - name: Parse arguments and variables
         id: prep
