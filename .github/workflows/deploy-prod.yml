@@ -54,8 +54,6 @@ jobs:
           IMAGE_NAME="${CONTAINER_NAME}:${TAG_NAME}"
           APP_DIR="${{ secrets.BASE_DEPLOY_PATH }}${CONTAINER_NAME}"
 
-          ENV_FILE="${ENV_FILE}TAG_NAME=${TAG_NAME}\n"
-
           echo -e "$ENV_FILE" > .env.final
 
           echo "tag-name=${TAG_NAME}" >> $GITHUB_ENV
