@@ -13,7 +13,8 @@ jobs:
       
       - name: Fetch project secrets 
         run: |
-          curl -sSf ${{ secrets.INFISICAL_URL }}/download/cli | sh 
+          curl -sSf ${{ secrets.INFISICAL_URL }}/download/cli -o infisical-install.sh
+          bash infisical-install.sh
           ./infisical export \
             --token="${{ secrets.INFISICAL_TOKEN }}" \
             --env=prod \
