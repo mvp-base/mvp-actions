@@ -85,8 +85,8 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            APP_DIR = ${{ env.app-dir }}
-            TAG_DIR = ${APP_DIR}/${{ env.tag-name }}
+            APP_DIR="${{ env.app-dir }}"
+            TAG_DIR="${APP_DIR}/${{ env.tag-name }}"
             
             if [-d "$TAG_DIR" ]; then 
               rm -rf "$TAG_DIR"
