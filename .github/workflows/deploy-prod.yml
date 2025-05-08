@@ -69,15 +69,9 @@ jobs:
 
       - name: Prepare deploy artifacts
         run: |
-          mkdir -p ${{ env.tag-name }}
-          cp docker-compose.prod.yml ${{ env.tag-name }}/docker-compose.yml
-          cp .env.final ${{ env.tag-name }}/.env
-
-      - name: Prepare deploy artifacts
-        run: |
-          mkdir -p ${{ env.tag-name }}
-          cp docker-compose.prod.yml ${{ env.tag-name }}/docker-compose.yml
-          cp .env.final ${{ env.tag-name }}/.env
+          mkdir -p deploy
+          cp docker-compose.prod.yml deploy/docker-compose.yml
+          cp .env.final deploy/.env
 
       - name: Check app dir and Stop previous version (if running)
         uses: appleboy/ssh-action@v0.1.5
@@ -89,13 +83,12 @@ jobs:
             set -euo pipefail
 
             APP_DIR="${{ env.app-dir }}"
-            TAG_DIR="${APP_DIR}/${{ env.tag-name }}"
 
-            if [ -f "$TAG_DIR/docker-compose.yml" ]; then
-              docker compose -f "$TAG_DIR/docker-compose.yml" down --remove-orphans
+            if [ -f "$APP_DIR/docker-compose.yml" ]; then
+              docker compose -f "$APP_DIR/docker-compose.yml" down --remove-orphans || true
             fi
 
-            rm -rf "$TAG_DIR"
+            rm -rf "$APP_DIR"
 
       - name: Upload docker-compose and env
         uses: appleboy/scp-action@v0.1.4
@@ -103,7 +96,7 @@ jobs:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: ./${{ env.tag-name }}
+          source: ./deploy
           target: "${{ env.app-dir }}"
           strip_components: 0
 
@@ -118,12 +111,11 @@ jobs:
             set -euo pipefail
 
             APP_DIR="${{ env.app-dir }}"
-            TAG_DIR="${APP_DIR}/${{ env.tag-name }}"
 
-            chmod 600 "$TAG_DIR/.env"
-            chmod 644 "$TAG_DIR/docker-compose.yml"
+            chmod 600 "$APP_DIR/.env"
+            chmod 644 "$APP_DIR/docker-compose.yml"
 
-            docker compose -f "$TAG_DIR/docker-compose.yml" up -d --pull always --remove-orphans
+            docker compose -f "$APP_DIR/docker-compose.yml" up -d --pull always --remove-orphans
 
             echo "Deployment complete."
 
