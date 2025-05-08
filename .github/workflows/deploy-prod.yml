@@ -23,7 +23,7 @@ jobs:
           file-output-path: ".env.infisical"
 
       - name: Debug check .env.infisical
-        run: ls -l .env.infisical || echo "Missing .env.infisical"
+        run: ls -la
 
       - name: Parse arguments and variables
         id: prep
