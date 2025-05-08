@@ -20,7 +20,7 @@ jobs:
           env-slug: "prod"
           project-slug: ${{ github.event.repository.name }}
           export-type: "file"
-          file-output-path: ".env"
+          file-output-path: "${{ github.event.repository.name }}.env"
 
       - name: Parse arguments and variables
         id: prep
@@ -40,7 +40,7 @@ jobs:
             else
               ENV_FILE="${ENV_FILE}${line}\n"
             fi
-          done < ".env" 
+          done < "${{ github.event.repository.name }}.env"
 
           REF="${{ github.ref }}" 
           TAG_NAME="${REF##*/}"
