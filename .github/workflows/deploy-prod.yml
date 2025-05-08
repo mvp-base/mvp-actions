@@ -36,17 +36,17 @@ jobs:
           ENV_FILE=""
 
           while IFS= read -r line; do
-            [[ -z "$line" || "$line" == \#* ]] && continue # Skip blank lines/comments
+            [[ -z "$line" || "$line" == \#* ]] && continue
+
+            # Strip surrounding quotes from value if present
             key="${line%%=*}"
             value="${line#*=}"
-
-            # Strip quotes
             value="${value%\"}"; value="${value#\"}"
             value="${value%\'}"; value="${value#\'}"
 
             if [[ "$key" == NEXT_PUBLIC_* ]]; then
               BUILD_ARGS="$BUILD_ARGS --build-arg ${key}=${value}"
-            else 
+            else
               ENV_FILE="${ENV_FILE}${key}=${value}\n"
             fi
           done < "/home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}.env"
