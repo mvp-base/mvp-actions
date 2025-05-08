@@ -15,8 +15,7 @@ jobs:
         run: |
           curl -sSf https://infisical.com/download/cli -o infisical-install.sh
           bash infisical-install.sh
-          INFISICAL_SITE_URL="${{ secrets.INFISICAL_URL }}"
-          ./infisical export \
+          INFISICAL_SITE_URL="${{ secrets.INFISICAL_URL }}" ./infisical export \
             --token="${{ secrets.INFISICAL_TOKEN }}" \
             --env=prod \
             > .env.infisical
