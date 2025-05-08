@@ -34,13 +34,16 @@ jobs:
           cp "$RAW_ENV" "$FINAL_ENV"
 
           while IFS= read -r line; do
+            echo "LINE: $line"
             [[ -z "$line" || "$line" == \#* ]] && continue
             if [[ "$line" == NEXT_PUBLIC_* ]]; then
               NAME=$(cut -d= -f1 <<< "$line")
               VALUE=$(cut -d= -f2- <<< "$line")
+              echo "Adding build arg: $NAME=$VALUE"
               BUILD_ARGS="$BUILD_ARGS --build-arg ${NAME}=${VALUE}"
             fi
           done < "$RAW_ENV"
+
 
 
           REF="${{ github.ref }}" 
