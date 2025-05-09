@@ -34,12 +34,10 @@ jobs:
           cp "$RAW_ENV" "$FINAL_ENV"
 
           while IFS= read -r line || [ -n "$line" ]; do
-            echo "LINE: $line"
             [[ -z "$line" || "$line" == \#* ]] && continue
             KEY=$(cut -d= -f1 <<< "$line" | xargs)
             VALUE=$(cut -d= -f2- <<< "$line" | sed "s/^['\"]//;s/['\"]$//" | xargs)
             if [[ "$KEY" == NEXT_PUBLIC_* ]]; then
-              echo "Adding build arg: $KEY=$VALUE"
               BUILD_ARGS="$BUILD_ARGS --build-arg $KEY=$VALUE"
             fi
           done < "$RAW_ENV"
